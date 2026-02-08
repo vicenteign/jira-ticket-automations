@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # --- Config ---
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "").strip()
 JIRA_EMAIL_PROJECT_KEY = os.getenv("JIRA_EMAIL_PROJECT_KEY", "").strip()
+JIRA_WEBSITE_ASSIGNEE_EMAIL = os.getenv("JIRA_WEBSITE_ASSIGNEE_EMAIL", "").strip()
 
 
 @asynccontextmanager
@@ -129,6 +130,18 @@ async def webhook_email(request: Request):
         meta += f"\n*Message ID: {payload.get('message_id')}*"
     full_description = f"{task['description']}\n\n{meta}"
 
+    # Resolve assignee for website requirements
+    assignee_account_id = None
+    if task.get("is_website_requirement") and JIRA_WEBSITE_ASSIGNEE_EMAIL:
+        jira = JiraClient(config)
+        assignee_account_id = jira.get_account_id_by_email(
+            JIRA_WEBSITE_ASSIGNEE_EMAIL, JIRA_EMAIL_PROJECT_KEY
+        )
+        if assignee_account_id:
+            logger.info("Assigning website task to %s", JIRA_WEBSITE_ASSIGNEE_EMAIL)
+        else:
+            logger.warning("Could not find Jira user for %s, creating unassigned", JIRA_WEBSITE_ASSIGNEE_EMAIL)
+
     # Create Jira issue
     jira = JiraClient(config)
     result = jira.create_issue(
@@ -138,6 +151,7 @@ async def webhook_email(request: Request):
         description=full_description,
         parent_key=None,
         epic_key=None,
+        assignee_account_id=assignee_account_id,
     )
 
     if not result:

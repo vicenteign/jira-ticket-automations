@@ -143,14 +143,16 @@ Email body:
 Generate a JSON with this format:
 {{
   "summary": "Short descriptive title of the request (max 80 chars)",
-  "description": "Detailed description including: what the sender is asking, relevant email context, and any important details"
+  "description": "Detailed description including: what the sender is asking, relevant email context, and any important details",
+  "is_website_requirement": true or false
 }}
 
 Rules:
 1. summary must be concise and in English
 2. description must include the key information from the email
 3. If the email has no clear request, use a generic summary like "Email inquiry from [sender]" and use the body as description
-4. Return ONLY valid JSON, no additional text."""
+4. Set is_website_requirement to true ONLY when it is an actionable requirement related to the website/frontend (e.g. add new pages, new frontend views, web UI changes, landing pages, frontend features). Set to false for general questions, consultations, or non-website requests.
+5. Return ONLY valid JSON, no additional text."""
 
         try:
             response = self.client.chat.completions.create(
@@ -173,7 +175,14 @@ Rules:
             result = json.loads(content)
             summary = result.get("summary", "Email inquiry")
             description = result.get("description", body[:2000] if body else "")
-            return {"summary": summary[:255], "description": description}
+            is_website = result.get("is_website_requirement", False)
+            if isinstance(is_website, str):
+                is_website = is_website.lower() in ("true", "yes", "1")
+            return {
+                "summary": summary[:255],
+                "description": description,
+                "is_website_requirement": bool(is_website),
+            }
         except (json.JSONDecodeError, Exception) as e:
             console.print(f"[red]Error extracting task from email: {e}[/red]")
             return None

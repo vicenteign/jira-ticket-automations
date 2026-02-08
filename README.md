@@ -99,6 +99,7 @@ FastAPI server that receives emails from Google Apps Script, analyzes content wi
 ```env
 WEBHOOK_SECRET=your-shared-secret-with-appscript
 JIRA_EMAIL_PROJECT_KEY=PROJ   # Project where tasks will be created
+JIRA_WEBSITE_ASSIGNEE_EMAIL=user@example.com  # Optional: assign website-related tasks (new pages, frontend, etc.) to this user
 ```
 
 ### Run server locally

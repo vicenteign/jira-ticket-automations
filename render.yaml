@@ -35,3 +35,5 @@ services:
         sync: false
       - key: JIRA_EMAIL_PROJECT_KEY
         sync: false
+      - key: JIRA_WEBSITE_ASSIGNEE_EMAIL
+        sync: false

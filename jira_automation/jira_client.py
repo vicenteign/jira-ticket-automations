@@ -106,6 +106,29 @@ class JiraClient:
         
         console.print(table)
     
+    def get_account_id_by_email(self, email: str, project_key: str) -> Optional[str]:
+        """Get Jira accountId for a user by email. Users are identified by accountId in Jira Cloud."""
+        try:
+            response = requests.get(
+                f"{self.base_url}/rest/api/3/user/assignable/search",
+                headers=self.headers,
+                params={"query": email.strip(), "project": project_key},
+                timeout=10,
+            )
+            response.raise_for_status()
+            users = response.json()
+            for u in users:
+                if u.get("emailAddress", "").lower() == email.strip().lower():
+                    return u.get("accountId")
+                if email.strip().lower() in (u.get("emailAddress") or "").lower():
+                    return u.get("accountId")
+            if users:
+                return users[0].get("accountId")
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.warning("Could not find user by email %s: %s", email, e)
+            return None
+
     def create_issue(
         self,
         project_key: str,
@@ -114,6 +137,7 @@ class JiraClient:
         description: str,
         parent_key: Optional[str] = None,
         epic_key: Optional[str] = None,
+        assignee_account_id: Optional[str] = None,
     ) -> Optional[Dict]:
         """Create a Jira issue. Returns None on failure."""
         normalized_type = self._normalize_issue_type(issue_type)
@@ -131,6 +155,8 @@ class JiraClient:
             }
         }
 
+        if assignee_account_id:
+            issue_data["fields"]["assignee"] = {"accountId": assignee_account_id}
         if parent_key:
             issue_data["fields"]["parent"] = {"key": parent_key}
         if epic_key:
