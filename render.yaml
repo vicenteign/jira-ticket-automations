@@ -1,0 +1,37 @@
+# Render Blueprint - Jira Automation API
+# https://render.com/docs/blueprint-spec
+#
+# Deploy: push to GitHub and connect repo on Render,
+# or use: render deploy
+#
+# Environment variables (secrets): configure in Render Dashboard
+# - JIRA_URL
+# - JIRA_EMAIL
+# - JIRA_API_TOKEN
+# - OPENAI_API_KEY
+# - WEBHOOK_SECRET
+# - JIRA_EMAIL_PROJECT_KEY
+
+services:
+  - type: web
+    name: jira-automation-api
+    runtime: python
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: JIRA_URL
+        sync: false
+      - key: JIRA_EMAIL
+        sync: false
+      - key: JIRA_API_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: JIRA_EMAIL_PROJECT_KEY
+        sync: false
