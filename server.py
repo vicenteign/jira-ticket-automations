@@ -141,8 +141,11 @@ async def webhook_email(request: Request):
     )
 
     if not result:
-        logger.error("Failed to create Jira issue")
-        raise HTTPException(status_code=500, detail="Failed to create Jira issue")
+        logger.error("Failed to create Jira issue (check logs above for Jira API error)")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create Jira issue. Check Render logs for Jira API error (e.g. invalid project key, permissions, or issue type).",
+        )
 
     issue_key = result.get("key")
     issue_url = jira.get_issue_url(issue_key) if issue_key else ""

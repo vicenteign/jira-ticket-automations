@@ -1,8 +1,11 @@
 """Jira Cloud API client."""
 
+import logging
 import requests
 from typing import List, Dict, Optional
 from rich.console import Console
+
+logger = logging.getLogger(__name__)
 from rich.table import Table
 
 from .config import Config
@@ -112,10 +115,9 @@ class JiraClient:
         parent_key: Optional[str] = None,
         epic_key: Optional[str] = None,
     ) -> Optional[Dict]:
-        """Create a Jira issue."""
-        # Normalize issue type names for Jira compatibility
+        """Create a Jira issue. Returns None on failure."""
         normalized_type = self._normalize_issue_type(issue_type)
-        
+
         issue_data = {
             "fields": {
                 "project": {"key": project_key},
@@ -123,12 +125,12 @@ class JiraClient:
                 "description": {
                     "type": "doc",
                     "version": 1,
-                    "content": self._format_description(description)
+                    "content": self._format_description(description),
                 },
-                "issuetype": {"name": normalized_type}
+                "issuetype": {"name": normalized_type},
             }
         }
-        
+
         if parent_key:
             issue_data["fields"]["parent"] = {"key": parent_key}
         if epic_key:
@@ -136,22 +138,31 @@ class JiraClient:
             if epic_link_field:
                 issue_data["fields"][epic_link_field] = epic_key
             elif "parent" not in issue_data["fields"]:
-                # Fallback for projects where epic link is modeled as parent.
                 issue_data["fields"]["parent"] = {"key": epic_key}
-        
+
         try:
             response = requests.post(
                 f"{self.base_url}/rest/api/3/issue",
                 headers=self.headers,
                 json=issue_data,
-                timeout=30
+                timeout=30,
             )
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
+            err_msg = str(e)
+            err_body = ""
+            if e.response is not None and hasattr(e.response, "text"):
+                err_body = e.response.text or ""
+            logger.error(
+                "Jira create_issue failed: %s | status=%s | body=%s",
+                err_msg,
+                getattr(e.response, "status_code", "?"),
+                err_body[:500],
+            )
             console.print(f"[red]Error creating issue '{summary}': {e}[/red]")
-            if hasattr(e.response, 'text'):
-                console.print(f"[red]Response: {e.response.text}[/red]")
+            if err_body:
+                console.print(f"[red]Jira response: {err_body[:300]}[/red]")
             return None
     
     def _normalize_issue_type(self, issue_type: str) -> str:
