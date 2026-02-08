@@ -127,17 +127,29 @@ Return ONLY valid JSON, no additional text."""
         
         return processed
 
-    def extract_task_from_email(self, subject: str, from_addr: str, body: str) -> Optional[Dict]:
+    def extract_task_from_email(
+        self, subject: str, from_addr: str, body: str, context: Optional[str] = None
+    ) -> Optional[Dict]:
         """
         Extract a single Jira task (summary + description) from email content.
         Identifies what the sender is asking or requesting.
+        context: Optional markdown with client/recipient context to improve is_website_requirement inference.
         """
-        prompt = f"""Analyze the following email and extract the sender's request or inquiry.
+        context_block = ""
+        if context and context.strip():
+            context_block = f"""
+Client/recipient context (use this to better infer if the request is website-related):
+{context.strip()}
+"""
 
+        prompt = f"""Analyze the following email and extract the sender's request or inquiry.
+{context_block}
+---
+Email:
 Subject: {subject}
 From: {from_addr}
 
-Email body:
+Body:
 {body[:4000]}
 
 Generate a JSON with this format:
@@ -151,7 +163,7 @@ Rules:
 1. summary must be concise and in English
 2. description must include the key information from the email
 3. If the email has no clear request, use a generic summary like "Email inquiry from [sender]" and use the body as description
-4. Set is_website_requirement to true ONLY when it is an actionable requirement related to the website/frontend (e.g. add new pages, new frontend views, web UI changes, landing pages, frontend features). Set to false for general questions, consultations, or non-website requests.
+4. Set is_website_requirement to true when it is an actionable requirement related to the website/frontend. Use the client context above to decide: e.g. adding columns, new pages, frontend views, web UI changes, tables, dashboards, manuscript-related UI, etc. Set to false for general questions or consultations.
 5. Return ONLY valid JSON, no additional text."""
 
         try:

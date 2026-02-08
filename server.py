@@ -6,6 +6,7 @@ Deploy to Render or similar cloud platforms.
 
 import os
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, HTTPException
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "").strip()
 JIRA_EMAIL_PROJECT_KEY = os.getenv("JIRA_EMAIL_PROJECT_KEY", "").strip()
 JIRA_WEBSITE_ASSIGNEE_EMAIL = os.getenv("JIRA_WEBSITE_ASSIGNEE_EMAIL", "").strip()
+EMAIL_LLM_CONTEXT_PATH = os.getenv("EMAIL_LLM_CONTEXT_PATH", "email_llm_context.md").strip()
 
 
 @asynccontextmanager
@@ -116,9 +118,23 @@ async def webhook_email(request: Request):
         logger.error("JIRA_EMAIL_PROJECT_KEY not set")
         raise HTTPException(status_code=503, detail="JIRA_EMAIL_PROJECT_KEY not configured")
 
+    # Load optional client context for LLM (helps infer is_website_requirement)
+    llm_context = ""
+    for base in (Path.cwd(), Path(__file__).resolve().parent):
+        ctx_path = base / EMAIL_LLM_CONTEXT_PATH
+        if ctx_path.exists() and ctx_path.is_file():
+            try:
+                llm_context = ctx_path.read_text(encoding="utf-8")
+                logger.info("Loaded email LLM context from %s", ctx_path)
+            except Exception as e:
+                logger.warning("Could not read %s: %s", ctx_path, e)
+            break
+
     # Extract task from email with LLM
     llm = LLMAnalyzer(config)
-    task = llm.extract_task_from_email(subject=subject, from_addr=from_addr, body=body_text)
+    task = llm.extract_task_from_email(
+        subject=subject, from_addr=from_addr, body=body_text, context=llm_context
+    )
 
     if not task:
         logger.error("LLM failed to extract task from email")

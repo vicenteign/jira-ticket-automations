@@ -99,8 +99,13 @@ FastAPI server that receives emails from Google Apps Script, analyzes content wi
 ```env
 WEBHOOK_SECRET=your-shared-secret-with-appscript
 JIRA_EMAIL_PROJECT_KEY=PROJ   # Project where tasks will be created
-JIRA_WEBSITE_ASSIGNEE_EMAIL=user@example.com  # Optional: assign website-related tasks (new pages, frontend, etc.) to this user
+JIRA_WEBSITE_ASSIGNEE_EMAIL=user@example.com  # Optional: assign website-related tasks to this user
+# EMAIL_LLM_CONTEXT_PATH=email_llm_context.md  # Optional: markdown with client context to improve is_website_requirement inference
 ```
+
+### Client context (optional)
+
+Edit `email_llm_context.md` to add context about the client/recipient (e.g. what the website does, when requests are website-related). This is concatenated to the LLM prompt and helps it infer `is_website_requirement` correctly (e.g. "add column for pending manuscripts" → website).
 
 ### Run server locally
 
@@ -146,6 +151,7 @@ jira-brandandbot-automation/
 ├── server.py              # FastAPI API (email→Jira webhook)
 ├── streamlit_app.py       # Streamlit UI
 ├── render.yaml            # Render configuration
+├── email_llm_context.md   # Optional client context for LLM (improves website-requirement inference)
 ├── Procfile               # Start command (Render/Heroku)
 ├── requirements.txt       # Dependencies
 ├── env.example            # Environment variables example
